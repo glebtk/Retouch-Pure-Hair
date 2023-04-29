@@ -1,0 +1,23 @@
+# Model parameters:
+image_size: 256
+in_channels: 3
+out_channels: 3
+
+# Training process:
+num_epochs: 100
+batch_size: 2
+generator_learning_rate: 0.0003
+discriminator_learning_rate: 0.0003
+adv_weight: 0.1
+load_checkpoint: false
+save_checkpoint: true
+num_workers: 2
+set_seed: false
+
+# Dataset:
+dataset: ./dataset
+dataset_mean: [0.5, 0.5, 0.5]
+dataset_std: [0.5, 0.5, 0.5]
+
+# Checkpoints:
+checkpoint_dir: checkpoints

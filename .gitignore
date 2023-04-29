@@ -1,0 +1,12 @@
+/.idea/*
+/__pycache__/*
+__test.py
+/tb/*
+/venv/
+
+
+/dataset/**
+!/dataset/prepare_dataset.ipynb
+
+# Не загружать сохраненные чекпоинты
+/checkpoints/**
