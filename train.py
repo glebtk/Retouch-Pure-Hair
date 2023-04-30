@@ -66,14 +66,13 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
             generator_loss = generator_mse_loss + generator_adv_loss * config.adv_weight
 
         # Perform backpropagation and update the generator weights
-        checkpoint["opt_disc"].zero_grad()
+        checkpoint["opt_gen"].zero_grad()
         g_scaler.scale(generator_loss).backward()
-        g_scaler.step(checkpoint["opt_disc"])
+        g_scaler.step(checkpoint["opt_gen"])
         g_scaler.update()
 
         # Updating tensorboard (current fake images)
-        # if idx % 64 == 0 and idx != 0:
-        if True:
+        if idx % 32 == 0:
             input_image = postprocessing(input_image, config)
             target_image = postprocessing(target_image, config)
             denoised_image = postprocessing(denoised_image, config)
@@ -142,7 +141,8 @@ def main():
         batch_size=config.batch_size,
         shuffle=True,
         num_workers=config.num_workers,
-        pin_memory=True
+        pin_memory=True,
+        drop_last=True
     )
 
     # Loading the latest checkpoint models
