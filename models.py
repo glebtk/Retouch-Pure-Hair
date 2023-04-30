@@ -49,7 +49,7 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
 
         self.net = nn.Sequential(
-            ConvBlock(in_channels, 64, kernel_size=3, stride=2, padding=1, activation="lrelu"),
+            ConvBlock(in_channels, 64, kernel_size=5, stride=2, padding=2, activation="lrelu"),
             ConvBlock(64, 128, kernel_size=3, stride=2, padding=1, activation="lrelu"),
             ConvBlock(128, 256, kernel_size=3, stride=2, padding=1, activation="lrelu"),
             ConvBlock(256, 128, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
