@@ -20,23 +20,21 @@ class HairDataset(Dataset):
         return len(self.data_csv)
 
     def __getitem__(self, index):
-        def open_transform_image(input_path, target_path, noise_path):
+        def open_transform_image(input_path, target_path):
             input_img = read_image(input_path)
             target_img = read_image(target_path)
-            noise_img = read_image(noise_path)
 
             if self.transform:
                 transformed = self.transform(
                     image=input_img,
-                    image0=target_img,
-                    image1=noise_img
+                    image0=target_img
                 )
-                return transformed["image"], transformed["image0"], transformed["image1"]
+                return transformed["image"], transformed["image0"]
             else:
                 to_tensor = ToTensorV2()
-                return to_tensor(input_img), to_tensor(target_img), to_tensor(noise_img)
+                return to_tensor(input_img), to_tensor(target_img)
 
-        img_paths = [os.path.join(self.root_dir, self.data_csv.iloc[index, i]) for i in range(3)]
+        img_paths = [os.path.join(self.root_dir, self.data_csv.iloc[index, i]) for i in range(2)]
         return open_transform_image(*img_paths)
 
 
