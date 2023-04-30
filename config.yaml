@@ -6,9 +6,9 @@ out_channels: 3
 # Training process:
 num_epochs: 100
 batch_size: 32
-generator_learning_rate: 0.0003
-discriminator_learning_rate: 0.00003
-adv_weight: 0.1
+generator_learning_rate: 0.00003
+discriminator_learning_rate: 0.000000003
+adv_weight: 0.7
 load_checkpoint: false
 save_checkpoint: false
 num_workers: 2
