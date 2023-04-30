@@ -60,7 +60,7 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
 
             # Calculate the adversarial loss for the generator
             denoised_image = input_image - fake_noise
-            generator_adv_loss = checkpoint["discriminator"](denoised_image).mean()
+            generator_adv_loss = checkpoint["discriminator"](denoised_image.detach()).mean()
 
             # Compute the total generator loss
             generator_loss = generator_mse_loss + generator_adv_loss * config.adv_weight
