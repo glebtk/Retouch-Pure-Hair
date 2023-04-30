@@ -21,7 +21,7 @@ def init_weights(layer, method='xavier_uniform'):
 
 
 class ConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, activation="relu", weight_init=None, transpose=False):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, activation="relu", transpose=False):
         super(ConvBlock, self).__init__()
 
         conv_layer = nn.ConvTranspose2d if transpose else nn.Conv2d
@@ -50,12 +50,12 @@ class Generator(nn.Module):
 
         self.net = nn.Sequential(
             ConvBlock(in_channels, 64, kernel_size=3, stride=2, padding=1, activation="lrelu"),
-            # ConvBlock(64, 128, kernel_size=3, stride=2, padding=1, activation="lrelu"),
-            # ConvBlock(128, 256, kernel_size=3, stride=2, padding=1, activation="lrelu"),
-            # ConvBlock(256, 128, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
-            # ConvBlock(128, 64, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
+            ConvBlock(64, 128, kernel_size=3, stride=2, padding=1, activation="lrelu"),
+            ConvBlock(128, 256, kernel_size=3, stride=2, padding=1, activation="lrelu"),
+            ConvBlock(256, 128, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
+            ConvBlock(128, 64, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
             ConvBlock(64, 32, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
-            ConvBlock(32, out_channels, kernel_size=5, stride=1, padding=2, activation="sigmoid", transpose=True)
+            ConvBlock(32, out_channels, kernel_size=5, stride=1, padding=2, activation="tanh")
         )
 
         if weight_init:
