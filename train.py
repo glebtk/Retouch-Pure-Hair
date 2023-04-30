@@ -21,12 +21,12 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
 
     # Training loop:
     loop = tqdm(data_loader)
-    for idx, (input_image, target_image, noise_image) in enumerate(loop):
+    for idx, (input_image, target_image) in enumerate(loop):
         global_step = (checkpoint["epoch"] * len(data_loader) + idx) * len(input_image)
 
         input_image = input_image.to(device)
         target_image = target_image.to(device)
-        noise_image = noise_image.to(device)
+        real_noise = input_image - target_image
 
         # ---------- Train the discriminator ---------- #
         with autocast():
@@ -56,7 +56,7 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
             # Generate reconstructed images using the generator
             fake_noise = checkpoint["generator"](input_image)
 
-            generator_mse_loss = MSE(noise_image, fake_noise)
+            generator_mse_loss = MSE(real_noise, fake_noise)
 
             # Calculate the adversarial loss for the generator
             denoised_image = input_image - fake_noise
@@ -101,7 +101,7 @@ def train(checkpoint, data_loader, device, config):
             save_checkpoint(checkpoint, os.path.join(config.checkpoint_dir, f"checkpoint_{train_name}_{epoch}.pth.tar"))
 
         # Updating tensorboard (test images)
-        writer.add_image("Test images", model_test(checkpoint["generator"], config, device), global_step=epoch)
+        # writer.add_image("Test images", model_test(checkpoint["generator"], config, device), global_step=epoch)
 
 
 def get_config():
