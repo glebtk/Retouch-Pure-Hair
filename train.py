@@ -26,17 +26,15 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
 
         input_image = input_image.to(device)
         target_image = target_image.to(device)
-        real_noise = input_image - target_image
 
         # ---------- Train the discriminator ---------- #
         with autocast():
             # Generate output images using the generator
-            fake_noise = checkpoint["generator"](input_image)
+            fake_image = checkpoint["generator"](input_image)
 
             # Get discriminator predictions for real and generated images
-            denoised_image = input_image - fake_noise
             real_disc_pred = checkpoint["discriminator"](target_image)
-            fake_disc_pred = checkpoint["discriminator"](denoised_image)
+            fake_disc_pred = checkpoint["discriminator"](fake_image)
 
             # Calculate the losses for real and generated images
             target_disc_loss = MSE(real_disc_pred, torch.ones_like(real_disc_pred))
@@ -54,13 +52,11 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
         # ---------- Train the generator ---------- #
         with autocast():  # Enable mixed precision
             # Generate reconstructed images using the generator
-            fake_noise = checkpoint["generator"](input_image)
+            fake_image = checkpoint["generator"](input_image.detach())
 
-            generator_mse_loss = MSE(real_noise, fake_noise)
-
-            # Calculate the adversarial loss for the generator
-            denoised_image = input_image - fake_noise
-            generator_adv_loss = checkpoint["discriminator"](denoised_image.detach()).mean()
+            # Calculate MSE and adversarial losses for the generator
+            generator_mse_loss = MSE(target_image, fake_image)
+            generator_adv_loss = checkpoint["discriminator"](fake_image.detach()).mean()
 
             # Compute the total generator loss
             generator_loss = generator_mse_loss + generator_adv_loss * config.adv_weight
@@ -75,8 +71,8 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
         if idx % 32 == 0:
             input_image = postprocessing(input_image, config)
             target_image = postprocessing(target_image, config)
-            denoised_image = postprocessing(denoised_image, config)
-            current_images = np.concatenate((input_image, target_image, denoised_image), axis=2)
+            fake_image = postprocessing(fake_image, config)
+            current_images = np.concatenate((input_image, target_image, fake_image), axis=2)
             writer.add_image(f"Current images", current_images, global_step=global_step)
 
             writer.add_scalar("Generator MSE loss", generator_mse_loss.item(), global_step=global_step)
