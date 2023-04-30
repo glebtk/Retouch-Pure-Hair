@@ -32,7 +32,7 @@ class HairDataset(Dataset):
                 return transformed["image"], transformed["image0"]
             else:
                 to_tensor = ToTensorV2()
-                return to_tensor(input_img), to_tensor(target_img)
+                return to_tensor(image=input_img), to_tensor(image=target_img)
 
         img_paths = [os.path.join(self.root_dir, self.data_csv.iloc[index, i]) for i in range(2)]
         return open_transform_image(*img_paths)
@@ -42,6 +42,8 @@ def dataset_test():
     root_dir = "./dataset/train"
     csv_file = "labels.csv"
     dataset = HairDataset(root_dir=root_dir, csv_file=csv_file)
+
+    x = dataset.__getitem__(0)
 
     print("Done!")
 
