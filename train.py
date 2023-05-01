@@ -54,7 +54,7 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
         # ---------- Train the generator ---------- #
         with autocast():  # Enable mixed precision
             # Generate reconstructed images using the generator
-            fake_noise = checkpoint["generator"](input_image)
+            fake_noise = checkpoint["generator"](input_image.detach())
 
             generator_mse_loss = MSE(real_noise, fake_noise)
 
