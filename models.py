@@ -71,7 +71,8 @@ class Generator(nn.Module):
         )
 
         if weight_init:
-            self.net.apply(lambda layer: init_weights(layer, method=weight_init))
+            self.encoder.apply(lambda layer: init_weights(layer, method=weight_init))
+            self.decoder.apply(lambda layer: init_weights(layer, method=weight_init))
 
     def forward(self, x: Tensor) -> Tensor:
         x = self.encoder(x)
