@@ -56,7 +56,8 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
 
             # Calculate MSE and adversarial losses for the generator
             generator_mse_loss = MSE(target_image, fake_image)
-            generator_adv_loss = checkpoint["discriminator"](fake_image.detach()).mean()
+            disc_pred = checkpoint["discriminator"](fake_image.detach()).mean()
+            generator_adv_loss = MSE(disc_pred, torch.ones_like(disc_pred.detach()))
 
             # Compute the total generator loss
             generator_loss = generator_mse_loss + generator_adv_loss * config.adv_weight
