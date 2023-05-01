@@ -45,24 +45,37 @@ class ConvBlock(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, in_channels: int = 3, out_channels: int = 3, weight_init=None):
+    def __init__(self, in_channels: int = 3, out_channels: int = 3, embedding_size=1024, weight_init=None):
         super(Generator, self).__init__()
 
-        self.net = nn.Sequential(
-            ConvBlock(in_channels, 64, kernel_size=5, stride=2, padding=2, activation="lrelu"),
+        self.encoder = nn.Sequential(
+            ConvBlock(in_channels, 32, kernel_size=5, stride=2, padding=2, activation="lrelu"),
+            ConvBlock(32, 64, kernel_size=3, stride=2, padding=1, activation="lrelu"),
             ConvBlock(64, 128, kernel_size=3, stride=2, padding=1, activation="lrelu"),
-            ConvBlock(128, 256, kernel_size=3, stride=2, padding=1, activation="lrelu"),
-            ConvBlock(256, 128, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
+            ConvBlock(128, 128, kernel_size=3, stride=2, padding=1, activation="lrelu"),
+            nn.Flatten(),
+            nn.Linear(128 * 16 * 16, embedding_size),
+            nn.BatchNorm1d(embedding_size),
+            nn.LeakyReLU()
+        )
+
+        self.decoder = nn.Sequential(
+            nn.Linear(embedding_size, 128 * 16 * 16),
+            nn.BatchNorm1d(128 * 16 * 16),
+            nn.LeakyReLU(),
+            nn.Unflatten(dim=1, unflattened_size=(128, 16, 16)),
+            ConvBlock(128, 128, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
             ConvBlock(128, 64, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
             ConvBlock(64, 32, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
-            ConvBlock(32, out_channels, kernel_size=5, stride=1, padding=2, activation="sigmoid")
+            ConvBlock(32, out_channels, kernel_size=5, stride=2, padding=2, transpose=True, activation="sigmoid")
         )
 
         if weight_init:
             self.net.apply(lambda layer: init_weights(layer, method=weight_init))
 
     def forward(self, x: Tensor) -> Tensor:
-        return self.net(x)
+        x = self.encoder(x)
+        return self.decoder(x)
 
 
 class Discriminator(nn.Module):
@@ -91,10 +104,9 @@ class Discriminator(nn.Module):
 
 if __name__ == "__main__":
     print(f"Generator:")
-    gen = Generator(in_channels=3, out_channels=3)
+    gen = Generator()
     summary(gen, (3, 256, 256))
 
     print(f"Discriminator:")
-    disc = Discriminator(in_channels=3)
+    disc = Discriminator()
     summary(disc, (3, 256, 256))
-
