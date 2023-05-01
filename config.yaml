@@ -2,6 +2,7 @@
 image_size: 256
 in_channels: 3
 out_channels: 3
+embedding_size: 512
 weight_init: none
 
 # Training process:
