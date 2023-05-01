@@ -31,12 +31,12 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
         # ---------- Train the discriminator ---------- #
         with autocast():
             # Generate output images using the generator
-            fake_noise = checkpoint["generator"](input_image)
+            fake_noise = checkpoint["generator"](input_image.detach())
 
             # Get discriminator predictions for real and generated images
             denoised_image = input_image - fake_noise
-            real_disc_pred = checkpoint["discriminator"](target_image)
-            fake_disc_pred = checkpoint["discriminator"](denoised_image)
+            real_disc_pred = checkpoint["discriminator"](target_image.detach())
+            fake_disc_pred = checkpoint["discriminator"](denoised_image.detach())
 
             # Calculate the losses for real and generated images
             target_disc_loss = MSE(real_disc_pred, torch.ones_like(real_disc_pred))
@@ -60,7 +60,8 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
 
             # Calculate the adversarial loss for the generator
             denoised_image = input_image - fake_noise
-            generator_adv_loss = checkpoint["discriminator"](denoised_image.detach()).mean()
+            disc_pred = checkpoint["discriminator"](denoised_image.detach()).mean()
+            generator_adv_loss = MSE(disc_pred, torch.ones_like(disc_pred))
 
             # Compute the total generator loss
             generator_loss = generator_mse_loss + generator_adv_loss * config.adv_weight
