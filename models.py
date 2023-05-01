@@ -55,7 +55,7 @@ class Generator(nn.Module):
             ConvBlock(256, 128, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
             ConvBlock(128, 64, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
             ConvBlock(64, 32, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
-            ConvBlock(32, out_channels, kernel_size=5, stride=1, padding=2, activation="sigmoid")
+            ConvBlock(32, out_channels, kernel_size=5, stride=1, padding=2, activation="tanh")
         )
 
         if weight_init:
