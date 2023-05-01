@@ -14,6 +14,9 @@ from utils import *
 
 
 def train_one_epoch(checkpoint, data_loader, device, writer, config):
+    checkpoint["generator"].train()
+    checkpoint["discriminator"].train()
+
     MSE = nn.MSELoss()
 
     g_scaler = GradScaler()
