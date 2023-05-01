@@ -157,13 +157,11 @@ def main():
 
         opt_gen = optim.Adam(
             params=list(generator.parameters()),
-            lr=config.generator_learning_rate,
-            betas=(0.5, 0.999)
+            lr=config.generator_learning_rate
         )
         opt_disc = optim.Adam(
             params=list(discriminator.parameters()),
-            lr=config.discriminator_learning_rate,
-            betas=(0.5, 0.999)
+            lr=config.discriminator_learning_rate
         )
 
         checkpoint = {
