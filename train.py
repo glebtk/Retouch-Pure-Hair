@@ -30,37 +30,15 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
         input_image = input_image.to(device)
         target_image = target_image.to(device)
 
-        # ---------- Train the discriminator ---------- #
-        with autocast():
-            # Generate output images using the generator
-            fake_image = checkpoint["generator"](input_image)
-
-            # Get discriminator predictions for real and generated images
-            real_disc_pred = checkpoint["discriminator"](target_image)
-            fake_disc_pred = checkpoint["discriminator"](fake_image)
-
-            # Calculate the losses for real and generated images
-            target_disc_loss = MSE(real_disc_pred, torch.ones_like(real_disc_pred))
-            output_disc_loss = MSE(fake_disc_pred, torch.zeros_like(fake_disc_pred))
-
-            # Compute the total discriminator loss
-            discriminator_loss = (target_disc_loss + output_disc_loss) / 2
-
-        # Perform backpropagation and update the discriminator weights
-        checkpoint["opt_disc"].zero_grad()
-        d_scaler.scale(discriminator_loss).backward()
-        d_scaler.step(checkpoint["opt_disc"])
-        d_scaler.update()
-
         # ---------- Train the generator ---------- #
         with autocast():  # Enable mixed precision
             # Generate reconstructed images using the generator
-            fake_image = checkpoint["generator"](input_image.detach())
+            reconstructed_image = checkpoint["generator"](input_image)
 
             # Calculate MSE and adversarial losses for the generator
-            generator_mse_loss = MSE(target_image, fake_image)
-            disc_pred = checkpoint["discriminator"](fake_image.detach()).mean()
-            generator_adv_loss = MSE(disc_pred, torch.ones_like(disc_pred.detach()))
+            generator_mse_loss = MSE(target_image, reconstructed_image)
+            disc_pred = checkpoint["discriminator"](reconstructed_image.detach()).mean()
+            generator_adv_loss = MSE(disc_pred, torch.ones_like(disc_pred))
 
             # Compute the total generator loss
             generator_loss = generator_mse_loss + generator_adv_loss * config.adv_weight
@@ -71,11 +49,33 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
         g_scaler.step(checkpoint["opt_gen"])
         g_scaler.update()
 
+        # ---------- Train the discriminator ---------- #
+        with autocast():
+            # Generate output images using the generator
+            reconstructed_image = checkpoint["generator"](input_image.detach())
+
+            # Get discriminator predictions for real and generated images
+            target_disc_pred = checkpoint["discriminator"](target_image.detach())
+            recon_disc_pred = checkpoint["discriminator"](reconstructed_image.detach())
+
+            # Calculate the losses for real and generated images
+            target_disc_loss = MSE(target_disc_pred, torch.ones_like(target_disc_pred))
+            recon_disc_loss = MSE(recon_disc_pred, torch.zeros_like(recon_disc_pred))
+
+            # Compute the total discriminator loss
+            discriminator_loss = (target_disc_loss + recon_disc_loss) / 2
+
+        # Perform backpropagation and update the discriminator weights
+        checkpoint["opt_disc"].zero_grad()
+        d_scaler.scale(discriminator_loss).backward()
+        d_scaler.step(checkpoint["opt_disc"])
+        d_scaler.update()
+
         # Updating tensorboard (current fake images)
         if idx % 32 == 0:
             input_image = postprocessing(input_image, config)
             target_image = postprocessing(target_image, config)
-            fake_image = postprocessing(fake_image, config)
+            fake_image = postprocessing(reconstructed_image, config)
             current_images = np.concatenate((input_image, target_image, fake_image), axis=2)
             writer.add_image(f"Current images", current_images, global_step=global_step)
 
@@ -152,8 +152,13 @@ def main():
         checkpoint_path = get_last_checkpoint(config.checkpoint_dir)
         checkpoint = load_checkpoint(checkpoint_path, device)
     else:
-        generator = Generator(in_channels=config.in_channels, out_channels=config.out_channels).to(device)
-        discriminator = Discriminator(in_channels=config.out_channels).to(device)
+        generator = Generator(in_channels=config.in_channels,
+                              out_channels=config.out_channels,
+                              embedding_size=config.embedding_size,
+                              weight_init=config.weight_init).to(device)
+
+        discriminator = Discriminator(in_channels=config.out_channels,
+                                      weight_init=config.weight_init).to(device)
 
         opt_gen = optim.Adam(
             params=list(generator.parameters()),
