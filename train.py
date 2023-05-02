@@ -131,7 +131,7 @@ def main():
     # Loading the dataset
     transforms = Transforms(config.image_size, config.dataset_mean, config.dataset_std)
     dataset = HairDataset(
-        root_dir=os.path.join(config.dataset, "train"),
+        root_dir=config.dataset,
         csv_file="labels.csv",
         transform=transforms.train_transforms
     )
