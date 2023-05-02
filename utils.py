@@ -82,17 +82,13 @@ def model_test(generator, config, device, img_dir="test_images"):
     return np.concatenate((images, pred), axis=1)
 
 
-def postprocessing(tensor, config):
+def postprocessing(tensor):
     image = tensor.cpu().detach().numpy()
 
     if len(image.shape) == 4:
         image = image[0, :, :, :]
 
-    for channel in range(config.in_channels):
-        image[channel] = image[channel] * config.dataset_std[channel] + config.dataset_mean[channel]
-        image[channel] *= 255
-
-    return image.astype('uint8')
+    return (image * 255).astype('uint8')
 
 
 def set_seed(seed: int = 42) -> None:
