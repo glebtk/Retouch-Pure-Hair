@@ -8,9 +8,9 @@ weight_init: null
 # Training process:
 num_epochs: 100
 batch_size: 32
-generator_learning_rate: 0.00003
-discriminator_learning_rate: 0.000000003
-adv_weight: 0.7
+generator_learning_rate: 0.0003
+discriminator_learning_rate: 0.000003
+adv_weight: 1.0
 load_checkpoint: false
 save_checkpoint: false
 num_workers: 2
@@ -18,8 +18,8 @@ set_seed: true
 
 # Dataset:
 dataset: ./dataset
-dataset_mean: [0.0, 0.0, 0.0]
-dataset_std: [1.0, 1.0, 1.0]
+dataset_mean: [0.5, 0.5, 0.5]
+dataset_std: [0.5, 0.5, 0.5]
 
 # Checkpoints:
 checkpoint_dir: checkpoints
