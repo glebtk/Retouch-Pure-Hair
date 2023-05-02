@@ -1,6 +1,7 @@
 /.idea/*
 /__pycache__/*
 __test.py
+__utils.py
 /tb/*
 /venv/
 
