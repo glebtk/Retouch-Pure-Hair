@@ -73,17 +73,15 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
 
         # Updating tensorboard (current fake images)
         if idx % 32 == 0:
-            input_image = postprocessing(input_image, config)
-            target_image = postprocessing(target_image, config)
-            fake_image = postprocessing(reconstructed_image, config)
+            input_image = postprocessing(input_image[0])
+            target_image = postprocessing(target_image[0])
+            fake_image = postprocessing(reconstructed_image[0])
             current_images = np.concatenate((input_image, target_image, fake_image), axis=2)
             writer.add_image(f"Current images", current_images, global_step=global_step)
 
             writer.add_scalar("Generator MSE loss", generator_mse_loss.item(), global_step=global_step)
             writer.add_scalar("Generator adversarial loss", generator_adv_loss.item(), global_step=global_step)
             writer.add_scalar("Discriminator loss", discriminator_loss.item(), global_step=global_step)
-
-    checkpoint["epoch"] += 1
 
 
 def train(checkpoint, data_loader, device, config):
@@ -93,6 +91,7 @@ def train(checkpoint, data_loader, device, config):
     for epoch in range(checkpoint["epoch"], config.num_epochs):
 
         train_one_epoch(checkpoint, data_loader, device, writer, config)
+        checkpoint["epoch"] += 1
 
         # Save checkpoint
         if config.save_checkpoint:
@@ -129,7 +128,7 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Loading the dataset
-    transforms = Transforms(config.image_size, config.dataset_mean, config.dataset_std)
+    transforms = Transforms(config.image_size)
     dataset = HairDataset(
         root_dir=config.dataset,
         csv_file="labels.csv",
@@ -162,11 +161,13 @@ def main():
 
         opt_gen = optim.Adam(
             params=list(generator.parameters()),
-            lr=config.generator_learning_rate
+            lr=config.generator_learning_rate,
+            betas=(0.5, 0.999)
         )
         opt_disc = optim.Adam(
             params=list(discriminator.parameters()),
-            lr=config.discriminator_learning_rate
+            lr=config.discriminator_learning_rate,
+            betas=(0.5, 0.999)
         )
 
         checkpoint = {
