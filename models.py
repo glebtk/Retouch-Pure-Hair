@@ -35,7 +35,6 @@ class ConvBlock(nn.Module):
         }
 
         self.block = nn.Sequential(
-            nn.Dropout(0.5),
             conv_layer(in_channels, out_channels, kernel_size, stride, padding, **conv_kwargs),
             nn.BatchNorm2d(out_channels),
             act_dict[activation]
@@ -50,25 +49,17 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
 
         self.encoder = nn.Sequential(
-            ConvBlock(in_channels, 32, kernel_size=5, stride=2, padding=2, activation="lrelu"),
-            ConvBlock(32, 64, kernel_size=3, stride=2, padding=1, activation="lrelu"),
-            ConvBlock(64, 128, kernel_size=3, stride=2, padding=1, activation="lrelu"),
-            ConvBlock(128, 128, kernel_size=3, stride=2, padding=1, activation="lrelu"),
-            nn.Flatten(),
-            nn.Linear(128 * 16 * 16, embedding_size),
-            nn.BatchNorm1d(embedding_size),
-            nn.LeakyReLU()
+            ConvBlock(in_channels, 64, kernel_size=5, stride=2, padding=2, activation="lrelu"),
+            ConvBlock(64, 32, kernel_size=3, stride=2, padding=1, activation="lrelu"),
+            ConvBlock(32, 16, kernel_size=3, stride=2, padding=1, activation="lrelu"),
+            # ConvBlock(128, 128, kernel_size=3, stride=2, padding=1, activation="lrelu"),
         )
 
         self.decoder = nn.Sequential(
-            nn.Linear(embedding_size, 128 * 16 * 16),
-            nn.BatchNorm1d(128 * 16 * 16),
-            nn.LeakyReLU(),
-            nn.Unflatten(dim=1, unflattened_size=(128, 16, 16)),
-            ConvBlock(128, 128, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
-            ConvBlock(128, 64, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
-            ConvBlock(64, 32, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
-            ConvBlock(32, out_channels, kernel_size=5, stride=2, padding=2, transpose=True, activation="tanh")
+            # ConvBlock(128, 128, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
+            ConvBlock(16, 32, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
+            ConvBlock(32, 64, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
+            ConvBlock(64, out_channels, kernel_size=5, stride=2, padding=2, transpose=True, activation="sigmoid")
         )
 
         if weight_init:
@@ -85,12 +76,12 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
 
         self.net = nn.Sequential(
-            ConvBlock(in_channels, 32, kernel_size=3, stride=2, padding=0, activation="lrelu"),
-            ConvBlock(32, 64, kernel_size=3, stride=2, padding=0, activation="lrelu"),
-            ConvBlock(64, 128, kernel_size=3, stride=2, padding=0, activation="lrelu"),
-            ConvBlock(128, 256, kernel_size=3, stride=2, padding=0, activation="lrelu"),
+            ConvBlock(in_channels, 32, kernel_size=4, stride=2, padding=0, activation="lrelu"),
+            ConvBlock(32, 64, kernel_size=4, stride=2, padding=0, activation="lrelu"),
+            ConvBlock(64, 128, kernel_size=4, stride=2, padding=0, activation="lrelu"),
+            ConvBlock(128, 256, kernel_size=4, stride=2, padding=0, activation="lrelu"),
             nn.Flatten(),
-            nn.Linear(256*15*15, 256),
+            nn.Linear(256*14*14, 256),
             nn.BatchNorm1d(256),
             nn.LeakyReLU(),
             nn.Linear(256, 1),
