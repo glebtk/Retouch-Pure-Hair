@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 from albumentations.pytorch import ToTensorV2
 
 
-def read_image(path):
+def read_image(path: str) -> cv2.Mat:
     img = cv2.imread(path)
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
@@ -20,30 +20,35 @@ class HairDataset(Dataset):
         return len(self.data_csv)
 
     def __getitem__(self, index):
-        def open_transform_image(input_path, target_path):
-            input_img = read_image(input_path)
-            target_img = read_image(target_path)
+        input_path, target_path = self._get_image_paths(index)
+        input_img, target_img = self._open_transform_images(input_path, target_path)
+        return input_img / 255.0, target_img / 255.0
 
-            if self.transform:
-                transformed = self.transform(
-                    image=input_img,
-                    image0=target_img
-                )
-                return transformed["image"], transformed["image0"]
-            else:
-                to_tensor = ToTensorV2()
-                return to_tensor(image=input_img), to_tensor(image=target_img)
+    def _get_image_paths(self, index):
+        return [os.path.join(self.root_dir, self.data_csv.iloc[index, i]) for i in range(2)]
 
-        img_paths = [os.path.join(self.root_dir, self.data_csv.iloc[index, i]) for i in range(2)]
-        return open_transform_image(*img_paths)
+    def _open_transform_images(self, input_path, target_path):
+        input_img = read_image(input_path)
+        target_img = read_image(target_path)
+
+        if self.transform:
+            transformed = self.transform(image=input_img, image0=target_img)
+            input_img = transformed["image"]
+            target_img = transformed["image0"]
+        else:
+            to_tensor = ToTensorV2()
+            input_img = to_tensor(image=input_img)["image"]
+            target_img = to_tensor(image=target_img)["image"]
+
+        return input_img, target_img
 
 
 def dataset_test():
-    root_dir = "./dataset/train"
+    root_dir = "./dataset"
     csv_file = "labels.csv"
     dataset = HairDataset(root_dir=root_dir, csv_file=csv_file)
 
-    x = dataset.__getitem__(0)
+    x = dataset[0]
 
     print("Done!")
 
