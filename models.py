@@ -35,6 +35,7 @@ class ConvBlock(nn.Module):
         }
 
         self.block = nn.Sequential(
+            nn.Dropout(0.5),
             conv_layer(in_channels, out_channels, kernel_size, stride, padding, **conv_kwargs),
             nn.BatchNorm2d(out_channels),
             act_dict[activation]
@@ -67,7 +68,7 @@ class Generator(nn.Module):
             ConvBlock(128, 128, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
             ConvBlock(128, 64, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
             ConvBlock(64, 32, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
-            ConvBlock(32, out_channels, kernel_size=5, stride=2, padding=2, transpose=True, activation="sigmoid")
+            ConvBlock(32, out_channels, kernel_size=5, stride=2, padding=2, transpose=True, activation="tanh")
         )
 
         if weight_init:
