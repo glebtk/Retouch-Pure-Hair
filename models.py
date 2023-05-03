@@ -20,24 +20,58 @@ def init_weights(layer, method='xavier_uniform'):
             layer.bias.data.zero_()
 
 
-class ConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, activation="relu", transpose=False):
-        super(ConvBlock, self).__init__()
+class ConvolutionalBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, activation="identity", batch_norm=False, transpose=False):
+        super(ConvolutionalBlock, self).__init__()
+        params = {
+            "in_channels": in_channels,
+            "out_channels": out_channels,
+            "kernel_size": kernel_size,
+            "stride": stride,
+            "padding": padding
+        }
 
-        conv_layer = nn.ConvTranspose2d if transpose else nn.Conv2d
-        conv_kwargs = {'output_padding': (stride - 1)} if transpose else {}
+        if transpose:
+            params["output_padding"] = (stride - 1)
 
-        act_dict = {
+        act = {
             "relu": nn.ReLU(),
             "sigmoid": nn.Sigmoid(),
             "tanh": nn.Tanh(),
-            "lrelu": nn.LeakyReLU(negative_slope=0.2)
+            "lrelu": nn.LeakyReLU(negative_slope=0.2),
+            "identity": nn.Identity()
         }
 
         self.block = nn.Sequential(
-            conv_layer(in_channels, out_channels, kernel_size, stride, padding, **conv_kwargs),
-            nn.BatchNorm2d(out_channels),
-            act_dict[activation]
+            nn.ConvTranspose2d(**params) if transpose else nn.Conv2d(**params),
+            nn.BatchNorm2d(out_channels) if batch_norm else nn.Identity(),
+            act[activation]
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.block(x)
+
+
+class FullyConnectedBlock(nn.Module):
+    def __init__(self, in_features, out_features, activation="identity", batch_norm=False):
+        super(FullyConnectedBlock, self).__init__()
+        params = {
+            "in_features": in_features,
+            "out_features": out_features,
+        }
+
+        act = {
+            "relu": nn.ReLU(),
+            "sigmoid": nn.Sigmoid(),
+            "tanh": nn.Tanh(),
+            "lrelu": nn.LeakyReLU(negative_slope=0.2),
+            "identity": nn.Identity()
+        }
+
+        self.block = nn.Sequential(
+            nn.Linear(**params),
+            nn.BatchNorm1d(out_features) if batch_norm else nn.Identity(),
+            act[activation]
         )
 
     def forward(self, x: Tensor) -> Tensor:
@@ -45,47 +79,42 @@ class ConvBlock(nn.Module):
 
 
 class DnCNN(nn.Module):
-    def __init__(self, in_channels=1, num_layers=5, num_features=64):
+    def __init__(self, in_channels=3, out_channels=3, num_layers=5, num_features=64, weight_init=None):
         super(DnCNN, self).__init__()
 
-        layers = []
-
-        # Входной сверточный слой
-        layers.append(nn.Conv2d(in_channels, num_features, kernel_size=3, padding=1))
-        layers.append(nn.ReLU(inplace=True))
-
-        # Сверточные блоки
+        residual_layers = []
         for _ in range(num_layers - 2):
-            layers.append(nn.Conv2d(num_features, num_features, kernel_size=3, padding=1))
-            layers.append(nn.BatchNorm2d(num_features))
-            layers.append(nn.ReLU(inplace=True))
+            residual_layers.append(
+                ConvolutionalBlock(num_features, num_features, kernel_size=3, stride=1, padding=1, activation="relu")
+            )
 
-        # Выходной сверточный слой
-        layers.append(nn.Conv2d(num_features, in_channels, kernel_size=3, padding=1))
+        self.net = nn.Sequential(
+            ConvolutionalBlock(in_channels, num_features, kernel_size=3, stride=1, padding=1, activation="lrelu"),
+            *residual_layers,
+            ConvolutionalBlock(num_features, out_channels, kernel_size=3, stride=1, padding=1, activation="identity")
+        )
 
-        self.model = nn.Sequential(*layers)
+        if weight_init:
+            self.net.apply(lambda layer: init_weights(layer, method=weight_init))
 
     def forward(self, x):
         residual = x
-        x = self.model(x)
+        x = self.net(x)
         return x + residual
 
 
 class Discriminator(nn.Module):
-    def __init__(self, in_channels: int = 1, weight_init=None):
+    def __init__(self, in_channels=3, weight_init=None):
         super(Discriminator, self).__init__()
 
         self.net = nn.Sequential(
-            ConvBlock(in_channels, 32, kernel_size=3, stride=2, padding=0, activation="lrelu"),
-            ConvBlock(32, 64, kernel_size=3, stride=2, padding=0, activation="lrelu"),
-            ConvBlock(64, 128, kernel_size=3, stride=2, padding=0, activation="lrelu"),
-            ConvBlock(128, 256, kernel_size=3, stride=2, padding=0, activation="lrelu"),
+            ConvolutionalBlock(in_channels, 32, kernel_size=3, stride=2, padding=0, batch_norm=True, activation="lrelu"),
+            ConvolutionalBlock(32, 64, kernel_size=3, stride=2, padding=0, batch_norm=True, activation="lrelu"),
+            ConvolutionalBlock(64, 128, kernel_size=3, stride=2, padding=0, batch_norm=True, activation="lrelu"),
+            ConvolutionalBlock(128, 256, kernel_size=3, stride=2, padding=0, batch_norm=True, activation="lrelu"),
             nn.Flatten(),
-            nn.Linear(256*15*15, 256),
-            nn.BatchNorm1d(256),
-            nn.LeakyReLU(),
-            nn.Linear(256, 1),
-            nn.Sigmoid()
+            FullyConnectedBlock(in_features=(256*15*15), out_features=256, batch_norm=True, activation="lrelu"),
+            FullyConnectedBlock(in_features=256, out_features=1, batch_norm=True, activation="sigmoid")
         )
 
         if weight_init:
