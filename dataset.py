@@ -11,13 +11,13 @@ def read_image(path: str) -> cv2.Mat:
 
 
 class HairDataset(Dataset):
-    def __init__(self, root_dir: str, csv_file: str, transform=None):
+    def __init__(self, root_dir, data, transform=None):
         self.root_dir = root_dir
-        self.data_csv = pd.read_csv(os.path.join(root_dir, csv_file))
+        self.data = data
         self.transform = transform
 
     def __len__(self):
-        return len(self.data_csv)
+        return len(self.data)
 
     def __getitem__(self, index):
         input_path, target_path = self._get_image_paths(index)
@@ -25,7 +25,7 @@ class HairDataset(Dataset):
         return input_img / 255.0, target_img / 255.0
 
     def _get_image_paths(self, index):
-        return [os.path.join(self.root_dir, self.data_csv.iloc[index, i]) for i in range(2)]
+        return [os.path.join(self.root_dir, self.data.iloc[index, i]) for i in range(2)]
 
     def _open_transform_images(self, input_path, target_path):
         input_img = read_image(input_path)
@@ -46,9 +46,8 @@ class HairDataset(Dataset):
 def dataset_test():
     root_dir = "./dataset"
     csv_file = "labels.csv"
-    dataset = HairDataset(root_dir=root_dir, csv_file=csv_file)
-
-    x = dataset[0]
+    data = pd.read_csv(os.path.join(root_dir, csv_file))
+    dataset = HairDataset(root_dir=root_dir, data=data)
 
     print("Done!")
 
