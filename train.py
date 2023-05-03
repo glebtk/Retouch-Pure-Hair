@@ -133,7 +133,7 @@ def get_config():
 def main():
     config = get_config()
 
-    if config.seed:
+    if config.set_seed:
         set_seed(config.seed)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
