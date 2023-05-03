@@ -21,9 +21,11 @@ save_checkpoint: false
 num_workers: 2
 train_name: null
 set_seed: true
+seed: 42
 
 # Dataset:
 dataset: ./dataset
+test_size: 0.2
 
 # Checkpoints:
 checkpoint_dir: checkpoints
