@@ -24,20 +24,23 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
 
     # Training loop:
     loop = tqdm(data_loader)
-    for idx, (input_image, target_image) in enumerate(loop):
-        global_step = (checkpoint["epoch"] * len(data_loader) + idx) * len(input_image)
+    for idx, (noisy_image, clean_image) in enumerate(loop):
+        global_step = (checkpoint["epoch"] * len(data_loader) + idx) * len(noisy_image)
 
-        input_image = input_image.to(device)
-        target_image = target_image.to(device)
+        noisy_image = noisy_image.to(device)
+        clean_image = clean_image.to(device)
 
-        # ---------- Train the generator ---------- #
+        # ---------- Train the generator (DnCNN) ---------- #
         with autocast():  # Enable mixed precision
-            # Generate reconstructed images using the generator
-            reconstructed_image = checkpoint["generator"](input_image)
+            # Generate noise tensor using the generator (DnCNN)
+            noise = checkpoint["generator"](noisy_image)
+
+            # Calculate the denoised image
+            denoised_image = noisy_image - noise
 
             # Calculate MSE and adversarial losses for the generator
-            generator_mse_loss = MSE(target_image, reconstructed_image)
-            disc_pred = checkpoint["discriminator"](reconstructed_image.detach()).mean()
+            generator_mse_loss = MSE(clean_image, denoised_image)
+            disc_pred = checkpoint["discriminator"](denoised_image.detach()).mean()
             generator_adv_loss = MSE(disc_pred, torch.ones_like(disc_pred))
 
             # Compute the total generator loss
@@ -51,19 +54,20 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
 
         # ---------- Train the discriminator ---------- #
         with autocast():
-            # Generate output images using the generator
-            reconstructed_image = checkpoint["generator"](input_image.detach())
+            # Generate denoised images using the generator (DnCNN)
+            noise = checkpoint["generator"](noisy_image.detach())
+            denoised_image = noisy_image - noise
 
             # Get discriminator predictions for real and generated images
-            target_disc_pred = checkpoint["discriminator"](target_image.detach())
-            recon_disc_pred = checkpoint["discriminator"](reconstructed_image.detach())
+            clean_disc_pred = checkpoint["discriminator"](clean_image.detach())
+            denoised_disc_pred = checkpoint["discriminator"](denoised_image.detach())
 
             # Calculate the losses for real and generated images
-            target_disc_loss = MSE(target_disc_pred, torch.ones_like(target_disc_pred))
-            recon_disc_loss = MSE(recon_disc_pred, torch.zeros_like(recon_disc_pred))
+            clean_disc_loss = MSE(clean_disc_pred, torch.ones_like(clean_disc_pred))
+            denoised_disc_loss = MSE(denoised_disc_pred, torch.zeros_like(denoised_disc_pred))
 
             # Compute the total discriminator loss
-            discriminator_loss = (target_disc_loss + recon_disc_loss) / 2
+            discriminator_loss = (clean_disc_loss + denoised_disc_loss) / 2
 
         # Perform backpropagation and update the discriminator weights
         checkpoint["opt_disc"].zero_grad()
@@ -73,9 +77,9 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
 
         # Updating tensorboard (current fake images)
         if idx % 32 == 0:
-            input_image = postprocessing(input_image[0])
-            target_image = postprocessing(target_image[0])
-            fake_image = postprocessing(reconstructed_image[0])
+            input_image = postprocessing(noisy_image[0])
+            target_image = postprocessing(clean_image[0])
+            fake_image = postprocessing(denoised_image[0])
             current_images = np.concatenate((input_image, target_image, fake_image), axis=2)
             writer.add_image(f"Current images", current_images, global_step=global_step)
 
@@ -85,7 +89,11 @@ def train_one_epoch(checkpoint, data_loader, device, writer, config):
 
 
 def train(checkpoint, data_loader, device, config):
-    train_name = get_current_time()
+    train_name = config.train_name
+
+    if not train_name:
+        train_name = get_current_time()
+
     writer = SummaryWriter(f"tb/train_{train_name}")
 
     for epoch in range(checkpoint["epoch"], config.num_epochs):
@@ -98,7 +106,7 @@ def train(checkpoint, data_loader, device, config):
             print("=> Saving a checkpoint")
             save_checkpoint(checkpoint, os.path.join(config.checkpoint_dir, f"checkpoint_{train_name}_{epoch}.pth.tar"))
 
-        # Updating tensorboard (test images)
+        # Updating tensorboard (test data)
         # writer.add_image("Test images", model_test(checkpoint["generator"], config, device), global_step=epoch)
 
 
@@ -152,11 +160,13 @@ def main():
         checkpoint = load_checkpoint(checkpoint_path, device)
     else:
         generator = DnCNN(in_channels=config.in_channels,
-                          num_layers=5,
-                          num_features=64).to(device)
+                          out_channels=config.out_channels,
+                          num_layers=config.generator_num_layers,
+                          num_features=config.generator_num_features,
+                          weight_init=config.generator_weight_init).to(device)
 
         discriminator = Discriminator(in_channels=config.out_channels,
-                                      weight_init=config.weight_init).to(device)
+                                      weight_init=config.discriminator_weight_init).to(device)
 
         opt_gen = optim.Adam(
             params=list(generator.parameters()),
