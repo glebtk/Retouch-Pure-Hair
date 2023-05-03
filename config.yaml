@@ -5,7 +5,7 @@ out_channels: 3
 weight_init: null
 
 generator_num_layers: 5
-generator_num_features: 64
+generator_num_features: 32
 
 generator_weight_init: null
 discriminator_weight_init: null
@@ -13,8 +13,8 @@ discriminator_weight_init: null
 # Training process:
 num_epochs: 100
 batch_size: 32
-generator_learning_rate: 0.0003
-discriminator_learning_rate: 0.000003
+generator_learning_rate: 0.00012
+discriminator_learning_rate: 0.0000012
 adv_weight: 1.0
 load_checkpoint: false
 save_checkpoint: false
