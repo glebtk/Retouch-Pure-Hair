@@ -73,9 +73,9 @@ def get_metrics(true_images, denoised_images):
         psnr = 20 * torch.log10(max_pixel_value / torch.sqrt(mse))
         psnr_total += psnr.item()
 
-        ssim_total += ssim(true_img.cpu().numpy(),
-                           denoised_img.cpu().numpy(),
-                           multichannel=True,
+        ssim_total += ssim(np.transpose(true_img.cpu().numpy(), (1, 2, 0)),
+                           np.transpose(denoised_img.cpu().numpy(), (1, 2, 0)),
+                           channel_axis=2,
                            data_range=max_pixel_value.item())
 
     return {
@@ -142,7 +142,7 @@ def log_tensorboard(losses, metrics, writer, global_step, sample):
         writer.add_scalar(f"Metrics/{metric_name}", metric_value, global_step)
 
     # Log sample images
-    sample_images = np.concatenate((sample["noisy"], sample["clean"], sample["denoised"]), axis=1)
+    sample_images = np.concatenate((sample["noisy"], sample["clean"], sample["denoised"]), axis=2)
     writer.add_image("Sample_images", sample_images, global_step)
 
 
