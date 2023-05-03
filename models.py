@@ -44,44 +44,44 @@ class ConvBlock(nn.Module):
         return self.block(x)
 
 
-class Generator(nn.Module):
-    def __init__(self, in_channels: int = 3, out_channels: int = 3, embedding_size=1024, weight_init=None):
-        super(Generator, self).__init__()
+class DnCNN(nn.Module):
+    def __init__(self, in_channels=1, num_layers=5, num_features=64):
+        super(DnCNN, self).__init__()
 
-        self.encoder = nn.Sequential(
-            ConvBlock(in_channels, 64, kernel_size=5, stride=2, padding=2, activation="lrelu"),
-            ConvBlock(64, 32, kernel_size=3, stride=2, padding=1, activation="lrelu"),
-            ConvBlock(32, 16, kernel_size=3, stride=2, padding=1, activation="lrelu"),
-            # ConvBlock(128, 128, kernel_size=3, stride=2, padding=1, activation="lrelu"),
-        )
+        layers = []
 
-        self.decoder = nn.Sequential(
-            # ConvBlock(128, 128, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
-            ConvBlock(16, 32, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
-            ConvBlock(32, 64, kernel_size=3, stride=2, padding=1, transpose=True, activation="lrelu"),
-            ConvBlock(64, out_channels, kernel_size=5, stride=2, padding=2, transpose=True, activation="sigmoid")
-        )
+        # Входной сверточный слой
+        layers.append(nn.Conv2d(in_channels, num_features, kernel_size=3, padding=1))
+        layers.append(nn.ReLU(inplace=True))
 
-        if weight_init:
-            self.encoder.apply(lambda layer: init_weights(layer, method=weight_init))
-            self.decoder.apply(lambda layer: init_weights(layer, method=weight_init))
+        # Сверточные блоки
+        for _ in range(num_layers - 2):
+            layers.append(nn.Conv2d(num_features, num_features, kernel_size=3, padding=1))
+            layers.append(nn.BatchNorm2d(num_features))
+            layers.append(nn.ReLU(inplace=True))
 
-    def forward(self, x: Tensor) -> Tensor:
-        x = self.encoder(x)
-        return self.decoder(x)
+        # Выходной сверточный слой
+        layers.append(nn.Conv2d(num_features, in_channels, kernel_size=3, padding=1))
+
+        self.model = nn.Sequential(*layers)
+
+    def forward(self, x):
+        residual = x
+        x = self.model(x)
+        return x + residual
 
 
 class Discriminator(nn.Module):
-    def __init__(self, in_channels: int = 3, weight_init=None):
+    def __init__(self, in_channels: int = 1, weight_init=None):
         super(Discriminator, self).__init__()
 
         self.net = nn.Sequential(
-            ConvBlock(in_channels, 32, kernel_size=4, stride=2, padding=0, activation="lrelu"),
-            ConvBlock(32, 64, kernel_size=4, stride=2, padding=0, activation="lrelu"),
-            ConvBlock(64, 128, kernel_size=4, stride=2, padding=0, activation="lrelu"),
-            ConvBlock(128, 256, kernel_size=4, stride=2, padding=0, activation="lrelu"),
+            ConvBlock(in_channels, 32, kernel_size=3, stride=2, padding=0, activation="lrelu"),
+            ConvBlock(32, 64, kernel_size=3, stride=2, padding=0, activation="lrelu"),
+            ConvBlock(64, 128, kernel_size=3, stride=2, padding=0, activation="lrelu"),
+            ConvBlock(128, 256, kernel_size=3, stride=2, padding=0, activation="lrelu"),
             nn.Flatten(),
-            nn.Linear(256*14*14, 256),
+            nn.Linear(256*15*15, 256),
             nn.BatchNorm1d(256),
             nn.LeakyReLU(),
             nn.Linear(256, 1),
@@ -96,10 +96,10 @@ class Discriminator(nn.Module):
 
 
 if __name__ == "__main__":
-    print(f"Generator:")
-    gen = Generator()
-    summary(gen, (3, 256, 256))
+    print(f"DnCNN:")
+    dncnn = DnCNN(in_channels=3)
+    summary(dncnn, (3, 256, 256))
 
     print(f"Discriminator:")
-    disc = Discriminator()
+    disc = Discriminator(in_channels=3)
     summary(disc, (3, 256, 256))
