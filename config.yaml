@@ -20,8 +20,7 @@ load_checkpoint: false
 save_checkpoint: false
 num_workers: 2
 train_name: null
-set_seed: true
-seed: 42
+seed: null
 
 # Dataset:
 dataset: ./dataset

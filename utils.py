@@ -8,7 +8,12 @@ from datetime import datetime
 from skimage.metrics import structural_similarity as ssim
 
 
-def save_checkpoint(checkpoint, filepath):
+def save_checkpoint(checkpoint, checkpoint_dir, checkpoint_name):
+    filepath = os.path.join(checkpoint_dir, checkpoint_name)
+
+    if not os.path.exists(checkpoint_dir):
+        make_directory(checkpoint_dir)
+
     if not filepath.endswith(".pth.tar"):
         raise ValueError("Filepath should end with .pth.tar extension")
 
@@ -59,13 +64,15 @@ def get_current_time():
     return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 
-def get_metrics(true_images, denoised_images):
+def get_metrics(true_images, denoised_images, device):
     mse_total = 0.0
     psnr_total = 0.0
     ssim_total = 0.0
     num_images = len(true_images)
 
     for true_img, denoised_img in zip(true_images, denoised_images):
+        true_img, denoised_img = true_img.to(device), denoised_img.to(device)
+
         mse = torch.mean((true_img - denoised_img) ** 2)
         mse_total += mse.item()
 
@@ -107,7 +114,7 @@ def test_model(checkpoint, data_loader, device, get_sample=False):
 
     checkpoint["generator"].train()
 
-    metrics = get_metrics(true_images=clean_images, denoised_images=denoised_images)
+    metrics = get_metrics(true_images=clean_images, denoised_images=denoised_images, device=device)
 
     if get_sample:
         num = random.randint(0, len(noisy_imgs) - 1)
@@ -128,6 +135,8 @@ def postprocessing(image):
 
     if len(image.shape) == 4:
         assert len(image.shape) == 3, "Input must be a single image, not a batch of images"
+
+    image = np.clip(image, 0, 1)
 
     return (image * 255).astype('uint8')
 

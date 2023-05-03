@@ -1,3 +1,4 @@
+import os
 import yaml
 import torch
 import argparse
@@ -106,7 +107,7 @@ def train(checkpoint, train_data_loader, test_data_loader, device, config):
             # Save checkpoint
             if config.save_checkpoint:
                 print("=> Saving a checkpoint")
-                save_checkpoint(checkpoint, os.path.join(config.checkpoint_dir, f"checkpoint_{train_name}_{epoch}.pth.tar"))
+                save_checkpoint(checkpoint, config.checkpoint_dir, f"checkpoint_{train_name}_{epoch}.pth.tar")
 
             # Updating tensorboard
             log_tensorboard(losses, metrics, writer, global_step=epoch, sample=sample)
@@ -132,7 +133,7 @@ def get_config():
 def main():
     config = get_config()
 
-    if config.set_seed:
+    if config.seed:
         set_seed(config.seed)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
