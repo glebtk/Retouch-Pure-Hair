@@ -9,6 +9,13 @@ from skimage.metrics import structural_similarity as ssim
 
 
 def save_checkpoint(checkpoint, checkpoint_dir, checkpoint_name):
+    """
+    A function for saving a checkpoint during training.
+    The checkpoint contains a generator, a discriminator,
+    their optimizers, as well as the number
+    of the current training epoch
+    """
+
     filepath = os.path.join(checkpoint_dir, checkpoint_name)
 
     if not os.path.exists(checkpoint_dir):
@@ -26,6 +33,10 @@ def save_checkpoint(checkpoint, checkpoint_dir, checkpoint_name):
 
 
 def load_checkpoint(filepath, device):
+    """
+    Function for loading a checkpoint before training
+    """
+
     if not filepath.endswith(".pth.tar"):
         raise ValueError("Filepath should end with .pth.tar extension")
 
@@ -42,6 +53,9 @@ def load_checkpoint(filepath, device):
 
 
 def get_last_checkpoint(checkpoint_dir):
+    """
+    Returns the path to the last saved checkpoint
+    """
     try:
         checkpoints = os.listdir(checkpoint_dir)
         checkpoints = [c for c in checkpoints if c.endswith(".pth.tar")]
@@ -65,6 +79,10 @@ def get_current_time():
 
 
 def get_metrics(true_images, denoised_images, device):
+    """
+    This function is used to evaluate models during and after training.
+    It calculates metrics such as MSE, PSNR and SSIM
+    """
     mse_total = 0.0
     psnr_total = 0.0
     ssim_total = 0.0
@@ -93,12 +111,15 @@ def get_metrics(true_images, denoised_images, device):
 
 
 def test_model(checkpoint, data_loader, device, get_sample=False):
+    """
+    Function for testing the model on a test sample
+    """
     noisy_images = []
     clean_images = []
     denoised_images = []
 
-    checkpoint["generator"].eval()  # Set the model to evaluation mode
-    with torch.no_grad():  # Disable gradient calculation
+    checkpoint["generator"].eval()
+    with torch.no_grad():
         for noisy_imgs, clean_imgs in data_loader:
             noisy_imgs = noisy_imgs.to(device)
             clean_imgs = clean_imgs.to(device)
@@ -130,6 +151,9 @@ def test_model(checkpoint, data_loader, device, get_sample=False):
 
 
 def postprocessing(image):
+    """
+    A function that performs postprocessing of images at the output of the model
+    """
     if isinstance(image, torch.Tensor):
         image = image.cpu().detach().numpy()
 
@@ -142,6 +166,10 @@ def postprocessing(image):
 
 
 def log_tensorboard(losses, metrics, writer, global_step, sample):
+    """
+    A function for logging data (metrics, current losses) during training on a tensorboard.
+    It can also return a random sample from the current test sample (input, target, current result)
+    """
     # Log losses
     for loss_name, loss_value in losses.items():
         writer.add_scalar(f"Loss/{loss_name}", loss_value, global_step)
