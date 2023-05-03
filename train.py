@@ -6,7 +6,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torch.cuda.amp import GradScaler, autocast
-from models import Generator, Discriminator
+from models import DnCNN, Discriminator
 from transforms import Transforms
 from dataset import HairDataset
 from tqdm import tqdm
@@ -151,10 +151,9 @@ def main():
         checkpoint_path = get_last_checkpoint(config.checkpoint_dir)
         checkpoint = load_checkpoint(checkpoint_path, device)
     else:
-        generator = Generator(in_channels=config.in_channels,
-                              out_channels=config.out_channels,
-                              embedding_size=config.embedding_size,
-                              weight_init=config.weight_init).to(device)
+        generator = DnCNN(in_channels=config.in_channels,
+                          num_layers=5,
+                          num_features=64).to(device)
 
         discriminator = Discriminator(in_channels=config.out_channels,
                                       weight_init=config.weight_init).to(device)
