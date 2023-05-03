@@ -117,11 +117,11 @@ def test_model(checkpoint, data_loader, device, get_sample=False):
     metrics = get_metrics(true_images=clean_images, denoised_images=denoised_images, device=device)
 
     if get_sample:
-        num = random.randint(0, len(noisy_imgs) - 1)
+        num = random.randint(0, len(noisy_images) - 1)
         sample = {
-            "noisy": postprocessing(noisy_imgs[num]),
-            "clean": postprocessing(clean_imgs[num]),
-            "denoised": postprocessing(denoised_imgs[num])
+            "noisy": postprocessing(noisy_images[num]),
+            "clean": postprocessing(clean_images[num]),
+            "denoised": postprocessing(denoised_images[num])
         }
 
         return metrics, sample
