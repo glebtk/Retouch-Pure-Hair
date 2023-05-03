@@ -5,9 +5,15 @@ import random
 import numpy as np
 from transforms import Transforms
 from datetime import datetime
+from skimage.metrics import structural_similarity as ssim
 
 
-def save_checkpoint(checkpoint, filepath):
+def save_checkpoint(checkpoint, checkpoint_dir, checkpoint_name):
+    filepath = os.path.join(checkpoint_dir, checkpoint_name)
+
+    if not os.path.exists(checkpoint_dir):
+        make_directory(checkpoint_dir)
+
     if not filepath.endswith(".pth.tar"):
         raise ValueError("Filepath should end with .pth.tar extension")
 
@@ -58,41 +64,95 @@ def get_current_time():
     return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 
-def model_test(generator, config, device, img_dir="test_images"):
-    generator.eval()
-    transforms = Transforms(config.image_size, config.dataset_mean, config.dataset_std)
+def get_metrics(true_images, denoised_images, device):
+    mse_total = 0.0
+    psnr_total = 0.0
+    ssim_total = 0.0
+    num_images = len(true_images)
 
-    # We upload and prepare images:
-    images = [img for img in os.listdir(img_dir) if img.endswith(".png") or img.endswith(".jpg")]
-    images = [cv2.imread(os.path.join(img_dir, img), 1) for img in images]
-    images = [cv2.cvtColor(img, cv2.COLOR_BGR2RGB) for img in images]
-    images = [transforms.test_transforms(img) for img in images]
-    images = [img.to(device) for img in images]
+    for true_img, denoised_img in zip(true_images, denoised_images):
+        true_img, denoised_img = true_img.to(device), denoised_img.to(device)
 
-    # Generating images:
-    pred = [postprocessing(generator(img.detach()), config) for img in images]
-    images = [postprocessing(img.detach(), config) for img in images]
+        mse = torch.mean((true_img - denoised_img) ** 2)
+        mse_total += mse.item()
 
-    generator.train()
+        max_pixel_value = torch.max(true_img)
+        psnr = 20 * torch.log10(max_pixel_value / torch.sqrt(mse))
+        psnr_total += psnr.item()
 
-    # Putting everything together:
-    images = np.concatenate(images, axis=2)
-    pred = np.concatenate(pred, axis=2)
+        ssim_total += ssim(np.transpose(true_img.cpu().numpy(), (1, 2, 0)),
+                           np.transpose(denoised_img.cpu().numpy(), (1, 2, 0)),
+                           channel_axis=2,
+                           data_range=max_pixel_value.item())
 
-    return np.concatenate((images, pred), axis=1)
+    return {
+        "MSE": mse_total / num_images,
+        "PSNR": psnr_total / num_images,
+        "SSIM": ssim_total / num_images
+    }
 
 
-def postprocessing(tensor, config):
-    image = tensor.cpu().detach().numpy()
+def test_model(checkpoint, data_loader, device, get_sample=False):
+    noisy_images = []
+    clean_images = []
+    denoised_images = []
+
+    checkpoint["generator"].eval()  # Set the model to evaluation mode
+    with torch.no_grad():  # Disable gradient calculation
+        for noisy_imgs, clean_imgs in data_loader:
+            noisy_imgs = noisy_imgs.to(device)
+            clean_imgs = clean_imgs.to(device)
+
+            # Denoising
+            noise = checkpoint["generator"](noisy_imgs)
+            denoised_imgs = noisy_imgs - noise
+
+            # Append images to the lists
+            noisy_images.extend(noisy_imgs.cpu())
+            clean_images.extend(clean_imgs.cpu())
+            denoised_images.extend(denoised_imgs.cpu())
+
+    checkpoint["generator"].train()
+
+    metrics = get_metrics(true_images=clean_images, denoised_images=denoised_images, device=device)
+
+    if get_sample:
+        num = random.randint(0, len(noisy_imgs) - 1)
+        sample = {
+            "noisy": postprocessing(noisy_imgs[num]),
+            "clean": postprocessing(clean_imgs[num]),
+            "denoised": postprocessing(denoised_imgs[num])
+        }
+
+        return metrics, sample
+    else:
+        return metrics
+
+
+def postprocessing(image):
+    if isinstance(image, torch.Tensor):
+        image = image.cpu().detach().numpy()
 
     if len(image.shape) == 4:
-        image = image[0, :, :, :]
+        assert len(image.shape) == 3, "Input must be a single image, not a batch of images"
 
-    for channel in range(config.in_channels):
-        image[channel] = image[channel] * config.dataset_std[channel] + config.dataset_mean[channel]
-        image[channel] *= 255
+    image = np.clip(image, 0, 1)
 
-    return image.astype('uint8')
+    return (image * 255).astype('uint8')
+
+
+def log_tensorboard(losses, metrics, writer, global_step, sample):
+    # Log losses
+    for loss_name, loss_value in losses.items():
+        writer.add_scalar(f"Loss/{loss_name}", loss_value, global_step)
+
+    # Log metrics
+    for metric_name, metric_value in metrics.items():
+        writer.add_scalar(f"Metrics/{metric_name}", metric_value, global_step)
+
+    # Log sample images
+    sample_images = np.concatenate((sample["noisy"], sample["clean"], sample["denoised"]), axis=2)
+    writer.add_image("Sample_images", sample_images, global_step)
 
 
 def set_seed(seed: int = 42) -> None:

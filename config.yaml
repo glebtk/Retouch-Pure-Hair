@@ -2,23 +2,30 @@
 image_size: 256
 in_channels: 3
 out_channels: 3
-weight_init: none
+weight_init: null
+
+generator_num_layers: 5
+generator_num_features: 64
+
+generator_weight_init: null
+discriminator_weight_init: null
 
 # Training process:
 num_epochs: 100
 batch_size: 32
-generator_learning_rate: 0.00003
-discriminator_learning_rate: 0.000000003
-adv_weight: 0.7
+generator_learning_rate: 0.0003
+discriminator_learning_rate: 0.000003
+adv_weight: 1.0
 load_checkpoint: false
 save_checkpoint: false
 num_workers: 2
+train_name: null
 set_seed: true
+seed: 42
 
 # Dataset:
 dataset: ./dataset
-dataset_mean: [0.0, 0.0, 0.0]
-dataset_std: [1.0, 1.0, 1.0]
+test_size: 0.2
 
 # Checkpoints:
 checkpoint_dir: checkpoints
