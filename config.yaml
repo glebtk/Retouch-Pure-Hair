@@ -2,7 +2,7 @@
 image_size: 256
 in_channels: 3
 out_channels: 3
-weight_init: xavier_uniform
+weight_init: null
 
 num_layers: 5
 num_features: 73

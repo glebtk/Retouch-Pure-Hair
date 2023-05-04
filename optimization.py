@@ -41,7 +41,7 @@ def objective_train(trial):
     config.num_epochs = 10
 
     config.batch_size = trial.suggest_int('batch_size', 32, 128)
-    config.learning_rate = trial.suggest_loguniform('learning_rate', 1e-5, 1e-2)
+    config.learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-2)
 
     train_name = f"optim_hp_bs={config.batch_size}_lr={config.learning_rate}"
     config.train_name = train_name
