@@ -11,10 +11,11 @@ def read_image(path: str) -> cv2.Mat:
 
 
 class HairDataset(Dataset):
-    def __init__(self, root_dir, data, transform=None):
+    def __init__(self, root_dir, data, transform=None, test=False):
         self.root_dir = root_dir
         self.data = data
         self.transform = transform
+        self.test = test
 
     def __len__(self):
         return len(self.data)
@@ -31,12 +32,18 @@ class HairDataset(Dataset):
         input_img = read_image(input_path)
         target_img = read_image(target_path)
 
-        if self.transform:
+        if self.transform and not self.test:
             input_img = self.transform.add_noise(image=input_img)["image"]
 
             transformed = self.transform.train_transforms(image=input_img, image0=target_img)
             input_img = transformed["image"]
             target_img = transformed["image0"]
+
+        elif self.transform and self.test:
+            transformed = self.transform.test_transforms(image=input_img, image0=target_img)
+            input_img = transformed["image"]
+            target_img = transformed["image0"]
+
         else:
             to_tensor = ToTensorV2()
             input_img = to_tensor(image=input_img)["image"]
