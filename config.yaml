@@ -12,7 +12,7 @@ num_epochs: 100
 batch_size: 32
 learning_rate: 0.00012
 load_checkpoint: false
-save_checkpoint: true
+save_checkpoint: false
 num_workers: 2
 train_name: null
 set_seed: true
