@@ -30,7 +30,7 @@ def objective_model(trial):
     config.train_name = train_name
 
     metrics = main(config)
-    return metrics["SSIM"]
+    return metrics["PSNR"]
 
 
 def objective_train(trial):
