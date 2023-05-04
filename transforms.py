@@ -19,6 +19,7 @@ class Transforms:
                                rotate_limit=(-360, 360),
                                interpolation=2,
                                border_mode=2),
+            A.Resize(image_size, image_size),
             ToTensorV2()
         ],
             additional_targets={"image0": "image"}
