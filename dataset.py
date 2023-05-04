@@ -32,7 +32,9 @@ class HairDataset(Dataset):
         target_img = read_image(target_path)
 
         if self.transform:
-            transformed = self.transform(image=input_img, image0=target_img)
+            input_img = self.transform.add_noise(image=input_img)["image"]
+
+            transformed = self.transform.train_transforms(image=input_img, image0=target_img)
             input_img = transformed["image"]
             target_img = transformed["image0"]
         else:

@@ -109,7 +109,7 @@ def main():
     train_dataset = HairDataset(
         root_dir=config.dataset,
         data=train_data,
-        transform=transforms.train_transforms
+        transform=transforms
     )
     test_dataset = HairDataset(
         root_dir=config.dataset,
