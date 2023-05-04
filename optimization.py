@@ -124,14 +124,15 @@ def load_and_combine_studies(study_files):
 
 
 def save_and_exit(signal_number, frame):
-    make_directory("./study")
-    joblib.dump(study, f"study/study_{phase}.pkl")
-    print(f"Study сохранен в study/study_{phase}.pkl.")
+    joblib.dump(study, f"study/study_{phase}_combined.pkl")
+    print(f"Study сохранен в study/study_{phase}_combined.pkl.")
     sys.exit(0)
 
 
 if __name__ == "__main__":
     phase = "optim_hp"
+
+    make_directory("./study")
 
     study_files = [os.path.join("study", name) for name in os.listdir("study")]
 
@@ -155,5 +156,6 @@ if __name__ == "__main__":
         best_trial = study.best_trial
         print(f"Best trial: {best_trial.value}, params: {best_trial.params}")
 
-    joblib.dump(study, f"study_{phase}_combined.pkl")
-    print(f"Study сохранен в study_{phase}_combined.pkl.")
+    joblib.dump(study, f"study/study_{phase}_combined.pkl")
+    print(f"Study сохранен в study/study_{phase}_combined.pkl.")
+
