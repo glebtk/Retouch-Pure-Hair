@@ -114,7 +114,8 @@ def main():
     test_dataset = HairDataset(
         root_dir=config.dataset,
         data=test_data,
-        transform=transforms
+        transform=transforms,
+        test=True
     )
 
     train_data_loader = DataLoader(
