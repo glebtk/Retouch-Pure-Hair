@@ -1,6 +1,9 @@
 import os
+import sys
 import yaml
 import torch
+import signal
+import joblib
 import optuna
 import argparse
 import pandas as pd
@@ -10,12 +13,12 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from sklearn.model_selection import train_test_split
 from torch.cuda.amp import GradScaler, autocast
-from models import Model
+from train import get_config, train
 from transforms import Transforms
 from dataset import HairDataset
+from models import Model
 from tqdm import tqdm
 from utils import *
-from train import get_config, train
 
 
 def objective_model(trial):
@@ -107,18 +110,50 @@ def main(config):
     return metrics
 
 
+def load_and_combine_studies(study_files):
+    studies = []
+    for file in study_files:
+        studies.append(joblib.load(file))
+
+    combined_study = optuna.study.create_study(direction="maximize")
+    for study in studies:
+        for trial in study.get_trials(states=(optuna.trial.TrialState.COMPLETE,)):
+            combined_study.add_trial(trial)
+
+    return combined_study
+
+
+def save_and_exit(signal_number, frame):
+    make_directory("./study")
+    joblib.dump(study, f"study/study_{phase}.pkl")
+    print(f"Study сохранен в study/study_{phase}.pkl.")
+    sys.exit(0)
+
+
 if __name__ == "__main__":
-    phase = "optim_model"
+    phase = "optim_hp"
+
+    study_files = [os.path.join("study", name) for name in os.listdir("study")]
+
+    if all(os.path.exists(file) for file in study_files):
+        study = load_and_combine_studies(study_files)
+        print(f"Загружены и объединены сохраненные Study для фазы {phase}.")
+    else:
+        study = optuna.create_study(direction='maximize')
+        print(f"Создано новое Study для фазы {phase}.")
+
+    signal.signal(signal.SIGINT, save_and_exit)
 
     if phase == "optim_model":
-        study = optuna.create_study(direction='maximize')
         study.optimize(objective_model, n_trials=100)
 
         best_trial = study.best_trial
         print(f"Best trial: {best_trial.value}, params: {best_trial.params}")
     elif phase == "optim_hp":
-        study = optuna.create_study(direction='maximize')
         study.optimize(objective_train, n_trials=100)
 
         best_trial = study.best_trial
         print(f"Best trial: {best_trial.value}, params: {best_trial.params}")
+
+    joblib.dump(study, f"study_{phase}_combined.pkl")
+    print(f"Study сохранен в study_{phase}_combined.pkl.")
