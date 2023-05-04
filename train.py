@@ -9,27 +9,23 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from sklearn.model_selection import train_test_split
 from torch.cuda.amp import GradScaler, autocast
-from models import DnCNN, Discriminator
+from models import Model
 from transforms import Transforms
 from dataset import HairDataset
 from tqdm import tqdm
 from utils import *
 
 
-def train_one_epoch(checkpoint, data_loader, device, config):
+def train_one_epoch(checkpoint, data_loader, device):
     MSE = nn.MSELoss()
 
     losses = {
-        "generator_mse_loss": 0.0,
-        "generator_adv_loss": 0.0,
-        "discriminator_loss": 0.0
+        "generator_mse_loss": 0.0
     }
 
-    g_scaler = GradScaler()
-    d_scaler = GradScaler()
+    scaler = GradScaler()
 
-    checkpoint["generator"].train()
-    checkpoint["discriminator"].train()
+    checkpoint["model"].train()
 
     # Training loop:
     loop = tqdm(data_loader)
@@ -37,54 +33,17 @@ def train_one_epoch(checkpoint, data_loader, device, config):
         noisy_image = noisy_image.to(device)
         clean_image = clean_image.to(device)
 
-        # ---------- Train the generator (DnCNN) ---------- #
         with autocast():  # Enable mixed precision
-            # Generate noise tensor using the generator (DnCNN)
-            noise = checkpoint["generator"](noisy_image)
+            denoised_image = checkpoint["model"](noisy_image)
 
-            # Calculate the denoised image
-            denoised_image = noisy_image - noise
-
-            # Calculate MSE and adversarial losses for the generator
             generator_mse_loss = MSE(clean_image, denoised_image)
-            losses["generator_mse_loss"] += generator_mse_loss.item()
-
-            disc_pred = checkpoint["discriminator"](denoised_image.detach()).mean()
-            generator_adv_loss = MSE(disc_pred, torch.ones_like(disc_pred))
-            losses["generator_adv_loss"] += generator_adv_loss.item()
-
-            # Compute the total generator loss
-            generator_loss = generator_mse_loss + generator_adv_loss * config.adv_weight
+            losses["mse"] += generator_mse_loss.item()
 
         # Perform backpropagation and update the generator weights
-        checkpoint["opt_gen"].zero_grad()
-        g_scaler.scale(generator_loss).backward()
-        g_scaler.step(checkpoint["opt_gen"])
-        g_scaler.update()
-
-        # ---------- Train the discriminator ---------- #
-        with autocast():
-            # Generate denoised images using the generator (DnCNN)
-            noise = checkpoint["generator"](noisy_image.detach())
-            denoised_image = noisy_image - noise
-
-            # Get discriminator predictions for real and generated images
-            clean_disc_pred = checkpoint["discriminator"](clean_image.detach())
-            denoised_disc_pred = checkpoint["discriminator"](denoised_image.detach())
-
-            # Calculate the losses for real and generated images
-            clean_disc_loss = MSE(clean_disc_pred, torch.ones_like(clean_disc_pred))
-            denoised_disc_loss = MSE(denoised_disc_pred, torch.zeros_like(denoised_disc_pred))
-
-            # Compute the total discriminator loss
-            discriminator_loss = (clean_disc_loss + denoised_disc_loss) / 2
-            losses["discriminator_loss"] += discriminator_loss.item()
-
-        # Perform backpropagation and update the discriminator weights
-        checkpoint["opt_disc"].zero_grad()
-        d_scaler.scale(discriminator_loss).backward()
-        d_scaler.step(checkpoint["opt_disc"])
-        d_scaler.update()
+        checkpoint["opt"].zero_grad()
+        scaler.scale(losses["mse"]).backward()
+        scaler.step(checkpoint["opt"])
+        scaler.update()
 
     losses = {k: v / len(data_loader) for k, v in losses.items()}
     return losses
@@ -99,7 +58,7 @@ def train(checkpoint, train_data_loader, test_data_loader, device, config):
     with SummaryWriter(f"tb/train_{train_name}") as writer:
         for epoch in range(checkpoint["epoch"], config.num_epochs):
 
-            losses = train_one_epoch(checkpoint, train_data_loader, device, config)
+            losses = train_one_epoch(checkpoint, train_data_loader, device)
             metrics, sample = test_model(checkpoint, test_data_loader, device, get_sample=True)
 
             checkpoint["epoch"] += 1
@@ -177,31 +136,21 @@ def main():
         checkpoint_path = get_last_checkpoint(config.checkpoint_dir)
         checkpoint = load_checkpoint(checkpoint_path, device)
     else:
-        generator = DnCNN(in_channels=config.in_channels,
-                          out_channels=config.out_channels,
-                          num_layers=config.generator_num_layers,
-                          num_features=config.generator_num_features,
-                          weight_init=config.generator_weight_init).to(device)
+        model = Model(in_channels=config.in_channels,
+                      out_channels=config.out_channels,
+                      num_layers=config.num_layers,
+                      num_features=config.num_features,
+                      weight_init=config.weight_init).to(device)
 
-        discriminator = Discriminator(in_channels=config.out_channels,
-                                      weight_init=config.discriminator_weight_init).to(device)
-
-        opt_gen = optim.Adam(
-            params=list(generator.parameters()),
-            lr=config.generator_learning_rate,
-            betas=(0.5, 0.999)
-        )
-        opt_disc = optim.Adam(
-            params=list(discriminator.parameters()),
-            lr=config.discriminator_learning_rate,
+        opt = optim.Adam(
+            params=list(model.parameters()),
+            lr=config.learning_rate,
             betas=(0.5, 0.999)
         )
 
         checkpoint = {
-            "generator": generator,
-            "discriminator": discriminator,
-            "opt_gen": opt_gen,
-            "opt_disc": opt_disc,
+            "model": model,
+            "opt": opt,
             "epoch": 0
         }
 

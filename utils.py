@@ -9,13 +9,6 @@ from skimage.metrics import structural_similarity as ssim
 
 
 def save_checkpoint(checkpoint, checkpoint_dir, checkpoint_name):
-    """
-    A function for saving a checkpoint during training.
-    The checkpoint contains a generator, a discriminator,
-    their optimizers, as well as the number
-    of the current training epoch
-    """
-
     filepath = os.path.join(checkpoint_dir, checkpoint_name)
 
     if not os.path.exists(checkpoint_dir):
@@ -33,10 +26,6 @@ def save_checkpoint(checkpoint, checkpoint_dir, checkpoint_name):
 
 
 def load_checkpoint(filepath, device):
-    """
-    Function for loading a checkpoint before training
-    """
-
     if not filepath.endswith(".pth.tar"):
         raise ValueError("Filepath should end with .pth.tar extension")
 
@@ -53,9 +42,6 @@ def load_checkpoint(filepath, device):
 
 
 def get_last_checkpoint(checkpoint_dir):
-    """
-    Returns the path to the last saved checkpoint
-    """
     try:
         checkpoints = os.listdir(checkpoint_dir)
         checkpoints = [c for c in checkpoints if c.endswith(".pth.tar")]
@@ -118,22 +104,21 @@ def test_model(checkpoint, data_loader, device, get_sample=False):
     clean_images = []
     denoised_images = []
 
-    checkpoint["generator"].eval()
+    checkpoint["model"].eval()
     with torch.no_grad():
         for noisy_imgs, clean_imgs in data_loader:
             noisy_imgs = noisy_imgs.to(device)
             clean_imgs = clean_imgs.to(device)
 
             # Denoising
-            noise = checkpoint["generator"](noisy_imgs)
-            denoised_imgs = noisy_imgs - noise
+            denoised_imgs = checkpoint["model"](noisy_imgs)
 
             # Append images to the lists
             noisy_images.extend(noisy_imgs.cpu())
             clean_images.extend(clean_imgs.cpu())
             denoised_images.extend(denoised_imgs.cpu())
 
-    checkpoint["generator"].train()
+    checkpoint["model"].train()
 
     metrics = get_metrics(true_images=clean_images, denoised_images=denoised_images, device=device)
 

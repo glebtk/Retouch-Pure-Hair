@@ -52,46 +52,20 @@ class ConvolutionalBlock(nn.Module):
         return self.block(x)
 
 
-class FullyConnectedBlock(nn.Module):
-    def __init__(self, in_features, out_features, activation="identity", batch_norm=False):
-        super(FullyConnectedBlock, self).__init__()
-        params = {
-            "in_features": in_features,
-            "out_features": out_features,
-        }
-
-        act = {
-            "relu": nn.ReLU(),
-            "sigmoid": nn.Sigmoid(),
-            "tanh": nn.Tanh(),
-            "lrelu": nn.LeakyReLU(negative_slope=0.2),
-            "identity": nn.Identity()
-        }
-
-        self.block = nn.Sequential(
-            nn.Linear(**params),
-            nn.BatchNorm1d(out_features) if batch_norm else nn.Identity(),
-            act[activation]
-        )
-
-    def forward(self, x: Tensor) -> Tensor:
-        return self.block(x)
-
-
-class DnCNN(nn.Module):
+class Model(nn.Module):
     def __init__(self, in_channels=3, out_channels=3, num_layers=5, num_features=64, weight_init=None):
-        super(DnCNN, self).__init__()
+        super(Model, self).__init__()
 
         residual_layers = []
         for _ in range(num_layers - 2):
             residual_layers.append(
-                ConvolutionalBlock(num_features, num_features, kernel_size=3, stride=1, padding=1, activation="relu")
+                ConvolutionalBlock(num_features, num_features, kernel_size=3, stride=1, padding=1, activation="lrelu")
             )
 
         self.net = nn.Sequential(
             ConvolutionalBlock(in_channels, num_features, kernel_size=3, stride=1, padding=1, activation="lrelu"),
             *residual_layers,
-            ConvolutionalBlock(num_features, out_channels, kernel_size=3, stride=1, padding=1, activation="identity")
+            ConvolutionalBlock(num_features, out_channels, kernel_size=3, stride=1, padding=1, activation="tanh")
         )
 
         if weight_init:
@@ -103,32 +77,7 @@ class DnCNN(nn.Module):
         return x + residual
 
 
-class Discriminator(nn.Module):
-    def __init__(self, in_channels=3, weight_init=None):
-        super(Discriminator, self).__init__()
-
-        self.net = nn.Sequential(
-            ConvolutionalBlock(in_channels, 32, kernel_size=3, stride=2, padding=0, batch_norm=True, activation="lrelu"),
-            ConvolutionalBlock(32, 64, kernel_size=3, stride=2, padding=0, batch_norm=True, activation="lrelu"),
-            ConvolutionalBlock(64, 128, kernel_size=3, stride=2, padding=0, batch_norm=True, activation="lrelu"),
-            ConvolutionalBlock(128, 256, kernel_size=3, stride=2, padding=0, batch_norm=True, activation="lrelu"),
-            nn.Flatten(),
-            FullyConnectedBlock(in_features=(256*15*15), out_features=256, batch_norm=True, activation="lrelu"),
-            FullyConnectedBlock(in_features=256, out_features=1, batch_norm=True, activation="sigmoid")
-        )
-
-        if weight_init:
-            self.net.apply(lambda layer: init_weights(layer, method=weight_init))
-
-    def forward(self, z: Tensor) -> Tensor:
-        return self.net(z)
-
-
 if __name__ == "__main__":
-    print(f"DnCNN:")
-    dncnn = DnCNN(in_channels=3)
-    summary(dncnn, (3, 256, 256))
-
-    print(f"Discriminator:")
-    disc = Discriminator(in_channels=3)
-    summary(disc, (3, 256, 256))
+    print(f"Model:")
+    model = Model(in_channels=3, out_channels=3, num_layers=5, num_features=32)
+    summary(model, (3, 256, 256))
