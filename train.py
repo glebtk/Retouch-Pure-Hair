@@ -71,6 +71,8 @@ def train(checkpoint, train_data_loader, test_data_loader, device, config):
             # Updating tensorboard
             log_tensorboard(losses, metrics, writer, global_step=epoch, sample=sample)
 
+        return metrics
+
 
 def get_config():
     # Load default configuration from YAML file
