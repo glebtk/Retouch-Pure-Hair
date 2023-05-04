@@ -2,10 +2,6 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
 
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
-
-
 class Transforms:
     def __init__(self, image_size):
         self.add_noise = A.Compose([
@@ -17,9 +13,12 @@ class Transforms:
         self.train_transforms = A.Compose([
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
-            A.Rotate(limit=(-180, 180), p=1.0),
-            A.RandomScale(scale_limit=(-0.6, 0.6)),
-            A.RandomCrop(height=image_size, width=image_size),
+            A.ShiftScaleRotate(p=1.0,
+                               shift_limit=(-0.3, 0.3),
+                               scale_limit=(-0.5, 0.5),
+                               rotate_limit=(-360, 360),
+                               interpolation=2,
+                               border_mode=2),
             ToTensorV2()
         ],
             additional_targets={"image0": "image"}
