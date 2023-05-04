@@ -114,9 +114,9 @@ def test_model(checkpoint, data_loader, device, get_sample=False):
             denoised_imgs = checkpoint["model"](noisy_imgs)
 
             # Append images to the lists
-            noisy_images.extend(noisy_imgs.cpu())
-            clean_images.extend(clean_imgs.cpu())
-            denoised_images.extend(denoised_imgs.cpu())
+            noisy_images.extend(torch.unbind(noisy_imgs.cpu(), dim=0))
+            clean_images.extend(torch.unbind(clean_imgs.cpu(), dim=0))
+            denoised_images.extend(torch.unbind(denoised_imgs.cpu(), dim=0))
 
     checkpoint["model"].train()
 
