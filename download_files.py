@@ -29,15 +29,14 @@ def download_files(load_dataset, load_checkpoint):
         print("=> The dataset is loaded!")
 
     if load_checkpoint:
-        # url = "https://gitlab.com/glebtutik/crimean_plants_classification_files/-/raw/main/model_checkpoint.zip"
-        # path = "checkpoints"
-        # file_name = "model_checkpoint.zip"
-        #
-        # download_and_unzip(url, path, file_name)
-        # os.remove(os.path.join(path, file_name))
+        url = "https://gitlab.com/glebtutik/crimean_plants_classification_files/-/raw/main/model_checkpoint.zip"
+        path = "checkpoints"
+        file_name = "model_checkpoint.zip"
 
-        # print("=> The checkpoint is loaded!")
-        print("=> Checkpoint is not available now :(")
+        download_and_unzip(url, path, file_name)
+        os.remove(os.path.join(path, file_name))
+
+        print("=> The checkpoint is loaded!")
 
 
 if __name__ == "__main__":
