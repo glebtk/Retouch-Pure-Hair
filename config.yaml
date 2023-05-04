@@ -2,10 +2,10 @@
 image_size: 256
 in_channels: 3
 out_channels: 3
-weight_init: null
+weight_init: xavier_uniform
 
 num_layers: 5
-num_features: 32
+num_features: 73
 
 # Training process:
 num_epochs: 100
