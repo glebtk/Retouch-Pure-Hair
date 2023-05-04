@@ -6,7 +6,7 @@ class Transforms:
     def __init__(self, image_size):
         self.add_noise = A.Compose([
             A.GaussNoise(var_limit=(0, 321), p=1),
-            A.JpegCompression(quality_lower=60, quality_upper=100, p=1),
+            A.ImageCompression(quality_lower=65, quality_upper=100, compression_type=1, p=1),
             A.MultiplicativeNoise(multiplier=(0.9, 1.1), per_channel=True, p=1)
         ])
 
