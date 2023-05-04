@@ -20,7 +20,7 @@ def train_one_epoch(checkpoint, data_loader, device):
     MSE = nn.MSELoss()
 
     losses = {
-        "generator_mse_loss": 0.0
+        "mse": 0.0
     }
 
     scaler = GradScaler()
@@ -36,12 +36,12 @@ def train_one_epoch(checkpoint, data_loader, device):
         with autocast():  # Enable mixed precision
             denoised_image = checkpoint["model"](noisy_image)
 
-            generator_mse_loss = MSE(clean_image, denoised_image)
-            losses["mse"] += generator_mse_loss.item()
+            mse_loss = MSE(clean_image, denoised_image)
+            losses["mse"] += mse_loss.item()
 
         # Perform backpropagation and update the generator weights
         checkpoint["opt"].zero_grad()
-        scaler.scale(losses["mse"]).backward()
+        scaler.scale(mse_loss).backward()
         scaler.step(checkpoint["opt"])
         scaler.update()
 
