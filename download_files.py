@@ -29,7 +29,7 @@ def download_files(load_dataset, load_checkpoint):
         print("=> The dataset is loaded!")
 
     if load_checkpoint:
-        url = "https://gitlab.com/glebtutik/crimean_plants_classification_files/-/raw/main/model_checkpoint.zip"
+        url = "https://gitlab.com/glebtutik/pure_hair_data/-/raw/main/model_checkpoint.zip"
         path = "checkpoints"
         file_name = "model_checkpoint.zip"
 
