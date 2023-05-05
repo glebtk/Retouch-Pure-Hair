@@ -16,6 +16,7 @@ from tqdm import tqdm
 from utils import *
 
 
+# Function to train the model for one epoch
 def train_one_epoch(checkpoint, data_loader, device):
     MSE = nn.MSELoss()
 
@@ -39,7 +40,7 @@ def train_one_epoch(checkpoint, data_loader, device):
             mse_loss = MSE(clean_image, denoised_image)
             losses["mse"] += mse_loss.item()
 
-        # Perform backpropagation and update the generator weights
+        # Perform backpropagation
         checkpoint["opt"].zero_grad()
         scaler.scale(mse_loss).backward()
         scaler.step(checkpoint["opt"])
@@ -49,6 +50,7 @@ def train_one_epoch(checkpoint, data_loader, device):
     return losses
 
 
+# Function to train the model
 def train(checkpoint, train_data_loader, test_data_loader, device, config):
     train_name = config.train_name
 
@@ -74,6 +76,7 @@ def train(checkpoint, train_data_loader, test_data_loader, device, config):
         return metrics
 
 
+# Function to get the configuration for the model
 def get_config():
     # Load default configuration from YAML file
     with open("config.yaml", "r") as f:
@@ -91,6 +94,7 @@ def get_config():
     return parser.parse_args()
 
 
+# Main function
 def main():
     config = get_config()
 
