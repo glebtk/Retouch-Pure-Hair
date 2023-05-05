@@ -7,17 +7,13 @@ import joblib
 import optuna
 import argparse
 import pandas as pd
-import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
 from sklearn.model_selection import train_test_split
-from torch.cuda.amp import GradScaler, autocast
 from train import get_config, train
 from transforms import Transforms
 from dataset import HairDataset
 from models import Model
-from tqdm import tqdm
 from utils import *
 
 
