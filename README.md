@@ -1,6 +1,6 @@
 # Hair Denoising with DnCNN
 
-![Cover image](https://i.imgur.com/diuGkYH.gif)
+![Cover image](https://i.imgur.com/HY6J9x3.gif)
 
 ## Introduction
 
