@@ -21,6 +21,7 @@ def objective_model(trial):
     config = get_config()
     config.num_epochs = 10
 
+    # Suggest weight initialization methods
     config.weight_init = trial.suggest_categorical('weight_init', [None, 'xavier_uniform', 'xavier_normal', 'kaiming_uniform', 'kaiming_normal'])
     config.num_layers = trial.suggest_int('num_layers', 1, 10)
     config.num_features = trial.suggest_int('num_features', 20, 80)
@@ -36,6 +37,7 @@ def objective_train(trial):
     config = get_config()
     config.num_epochs = 10
 
+    # Suggest hyperparameters for training
     config.batch_size = trial.suggest_int('batch_size', 32, 128)
     config.learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-2)
 
@@ -52,7 +54,7 @@ def main(config):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    # Loading the dataset
+    # Load the dataset
     data = pd.read_csv(os.path.join(config.dataset, "labels.csv"))
     transforms = Transforms(config.image_size)
 
@@ -70,6 +72,7 @@ def main(config):
         transform=transforms.test_transforms
     )
 
+    # Create data loaders for train and test datasets
     train_data_loader = DataLoader(
         train_dataset,
         batch_size=config.batch_size,
@@ -84,12 +87,14 @@ def main(config):
         num_workers=config.num_workers
     )
 
+    # Initialize the model
     model = Model(in_channels=config.in_channels,
                   out_channels=config.out_channels,
                   num_layers=config.num_layers,
                   num_features=config.num_features,
                   weight_init=config.weight_init).to(device)
 
+    # Initialize the optimizer
     opt = optim.Adam(
         params=list(model.parameters()),
         lr=config.learning_rate,
@@ -110,48 +115,46 @@ def load_and_combine_studies(study_files):
     studies = []
     for file in study_files:
         studies.append(joblib.load(file))
+        combined_study = optuna.study.create_study(direction="maximize")
+        for study in studies:
+            for trial in study.get_trials(states=(optuna.trial.TrialState.COMPLETE,)):
+                combined_study.add_trial(trial)
 
-    combined_study = optuna.study.create_study(direction="maximize")
-    for study in studies:
-        for trial in study.get_trials(states=(optuna.trial.TrialState.COMPLETE,)):
-            combined_study.add_trial(trial)
+        return combined_study
 
-    return combined_study
+    def save_and_exit(signal_number, frame):
+        joblib.dump(study, f"study/study_{phase}_combined.pkl")
+        print(f"Study saved to study/study_{phase}_combined.pkl.")
+        sys.exit(0)
 
+    if __name__ == "__main__":
+        phase = "optim_hp"
 
-def save_and_exit(signal_number, frame):
-    joblib.dump(study, f"study/study_{phase}_combined.pkl")
-    print(f"Study сохранен в study/study_{phase}_combined.pkl.")
-    sys.exit(0)
+        make_directory("./study")
 
+        study_files = [os.path.join("study", name) for name in os.listdir("study")]
 
-if __name__ == "__main__":
-    phase = "optim_hp"
+        if all(os.path.exists(file) for file in study_files):
+            study = load_and_combine_studies(study_files)
+            print(f"Loaded and combined saved Study for phase {phase}.")
+        else:
+            study = optuna.create_study(direction='maximize')
+            print(f"Created a new Study for phase {phase}.")
 
-    make_directory("./study")
+        signal.signal(signal.SIGINT, save_and_exit)
 
-    study_files = [os.path.join("study", name) for name in os.listdir("study")]
+        if phase == "optim_model":
+            study.optimize(objective_model, n_trials=100)
 
-    if all(os.path.exists(file) for file in study_files):
-        study = load_and_combine_studies(study_files)
-        print(f"Загружены и объединены сохраненные Study для фазы {phase}.")
-    else:
-        study = optuna.create_study(direction='maximize')
-        print(f"Создано новое Study для фазы {phase}.")
+            best_trial = study.best_trial
+            print(f"Best trial: {best_trial.value}, params: {best_trial.params}")
+        elif phase == "optim_hp":
+            study.optimize(objective_train, n_trials=100)
 
-    signal.signal(signal.SIGINT, save_and_exit)
+            best_trial = study.best_trial
+            print(f"Best trial: {best_trial.value}, params: {best_trial.params}")
 
-    if phase == "optim_model":
-        study.optimize(objective_model, n_trials=100)
+        joblib.dump(study, f"study/study_{phase}_combined.pkl")
+        print(f"Study saved to study/study_{phase}_combined.pkl.")
 
-        best_trial = study.best_trial
-        print(f"Best trial: {best_trial.value}, params: {best_trial.params}")
-    elif phase == "optim_hp":
-        study.optimize(objective_train, n_trials=100)
-
-        best_trial = study.best_trial
-        print(f"Best trial: {best_trial.value}, params: {best_trial.params}")
-
-    joblib.dump(study, f"study/study_{phase}_combined.pkl")
-    print(f"Study сохранен в study/study_{phase}_combined.pkl.")
 
